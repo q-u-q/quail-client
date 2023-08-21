@@ -203,34 +203,21 @@ target_link_libraries(quiche_core PUBLIC
 
 )
 
-# message(STATUS ${quiche_core_hdrs})
-# set(B_list "")
-# jsonGet(${MY_JSON_STRING} "b" B_list)
-
-
 
 add_executable(quiche-node 
-    src/quit_converter.h
-    src/quit_converter.cc
-    src/quit_transport.h
-    src/quit_transport.cc
+  # src/web_transport_client.h
+  # src/web_transport_client.cc
 
-    src/quit_server.h
-    src/quit_server.cc
-    src/quit_toy_server.h
-    src/quit_toy_server.cc
-    src/quit_server_backend.h
-    src/quit_server_backend.cc
-    src/quit_proof_providers_impl.h
-    src/quit_proof_providers_impl.cc
-    src/quit_dispatcher.h
-    src/quit_dispatcher.cc
-    src/quit_server_session.h
-    src/quit_server_session.cc
-    src/quit_server_stream.h
-    src/quit_server_stream.cc
-    src/quit_web_transport_visitors.h
-    main.cc)
+  # src/web_transport_error.h
+  # src/web_transport_error.cc
+
+  # src/web_transport_http3_client.h
+  # src/web_transport_http3_client.cc
+
+  src/my_quic_toy_client.h
+  src/my_quic_toy_client.cc
+
+  main.cc)
 
 target_link_libraries(quiche-node 
   PUBLIC
@@ -238,6 +225,8 @@ target_link_libraries(quiche-node
   quiche_core
   quiche_platform_default
   quiche_platform_default_tools
-  quiche_tool_support)
+  quiche_tool_support
+  absl::flags_parse
+  googleurl)
 
 

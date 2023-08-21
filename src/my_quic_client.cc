@@ -12,6 +12,7 @@
 #include "quiche/quic/platform/api/quic_socket_address.h"
 #include "quiche/quic/tools/quic_simple_client_session.h"
 
+
 namespace quic {
 
 MyQuicClient::MyQuicClient(
@@ -88,7 +89,7 @@ std::unique_ptr<QuicSession> MyQuicClient::CreateQuicClientSession(
   return std::make_unique<QuicSimpleClientSession>(
       *config(), supported_versions, connection, this, network_helper(),
       server_id(), crypto_config(), push_promise_index(), drop_response_body(),
-      enable_web_transport());
+      true);
 }
 
 QuicClientDefaultNetworkHelper* MyQuicClient::default_network_helper() {

@@ -9,7 +9,7 @@
 #define SRC_QUIC_TOY_CLIENT_H_
 
 
-#include "quiche/quic/tools/quic_client_factory.h"
+#include "my_quic_epoll_client_factory.h"
 
 namespace quic {
 
@@ -17,18 +17,17 @@ class MyQuicToyClient {
  public:
   // Constructs a new toy client that will use |client_factory| to create the
   // actual QuicSpdyClientBase instance.
-  MyQuicToyClient(ClientFactoryInterface* client_factory);
+  MyQuicToyClient(MyQuicEpollClientFactory* client_factory);
 
   // Connects to the QUIC server based on the various flags defined in the
   // .cc file, sends requests and prints the responses. Returns 0 on success
   // and non-zero otherwise.
   int SendRequestsAndPrintResponses();
 
-  // Compatibility alias
-  using ClientFactory = ClientFactoryInterface;
+  int SendWebtransport();
 
  private:
-  ClientFactoryInterface* client_factory_;  // Unowned.
+  MyQuicEpollClientFactory* client_factory_;  // Unowned.
 };
 
 }  // namespace quic

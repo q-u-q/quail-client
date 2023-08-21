@@ -40,6 +40,7 @@
 // After submitting changes to this file, you will need to follow the
 // instructions at go/quic_client_binary_update
 
+#include <unistd.h>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -56,5 +57,9 @@ int main(int argc, char* argv[]) {
 
   quic::MyQuicEpollClientFactory factory;
   quic::MyQuicToyClient client(&factory);
-  return client.SendRequestsAndPrintResponses();
+  // return client.SendRequestsAndPrintResponses();
+  client.SendWebtransport();
+
+  sleep(10000);
+  return 0;
 }

@@ -66,6 +66,8 @@
 #include "quiche/common/quiche_text_utils.h"
 #include "quiche/spdy/core/http2_header_block.h"
 
+#include "quiche/quic/core/http/web_transport_http3.h"
+
 #include "quiche/quic/tools/quic_name_lookup.h"
 
 
@@ -252,7 +254,7 @@ std::unique_ptr<ClientProofSource> CreateTestClientProofSource(
 
 }  // namespace
 
-MyQuicToyClient::MyQuicToyClient(ClientFactory* client_factory)
+MyQuicToyClient::MyQuicToyClient(MyQuicEpollClientFactory* client_factory)
     : client_factory_(client_factory) {}
 
 int MyQuicToyClient::SendRequestsAndPrintResponses() {
@@ -577,6 +579,247 @@ int MyQuicToyClient::SendRequestsAndPrintResponses() {
       }
     }
   }
+
+  return 0;
+}
+
+class WebTransportVisitorProxy : public quic::WebTransportVisitor {
+ public:
+  explicit WebTransportVisitorProxy(quic::WebTransportVisitor* visitor)
+      : visitor_(visitor) {}
+
+  void OnSessionReady() override { visitor_->OnSessionReady(); }
+  void OnSessionClosed(quic::WebTransportSessionError error_code,
+                       const std::string& error_message) override {
+    visitor_->OnSessionClosed(error_code, error_message);
+  }
+  void OnIncomingBidirectionalStreamAvailable() override {
+    visitor_->OnIncomingBidirectionalStreamAvailable();
+  }
+  void OnIncomingUnidirectionalStreamAvailable() override {
+    visitor_->OnIncomingUnidirectionalStreamAvailable();
+  }
+  void OnDatagramReceived(absl::string_view datagram) override {
+    visitor_->OnDatagramReceived(datagram);
+  }
+  void OnCanCreateNewOutgoingBidirectionalStream() override {
+    visitor_->OnCanCreateNewOutgoingBidirectionalStream();
+  }
+  void OnCanCreateNewOutgoingUnidirectionalStream() override {
+    visitor_->OnCanCreateNewOutgoingUnidirectionalStream();
+  }
+
+ private:
+  raw_ptr<quic::WebTransportVisitor> visitor_;
+};
+
+
+int MyQuicToyClient::SendWebtransport(){
+  std::string url_str = "localhost/echo";
+  QuicUrl url(url_str, "https");
+  std::string host = quiche::GetQuicheCommandLineFlag(FLAGS_host);
+  if (host.empty()) {
+    host = url.host();
+  }
+  int port = 4433;
+  if (port == 0) {
+    port = url.port();
+  }
+
+  quic::ParsedQuicVersionVector versions = quic::CurrentSupportedVersions();
+
+  if (quiche::GetQuicheCommandLineFlag(FLAGS_quic_ietf_draft)) {
+    quic::QuicVersionInitializeSupportForIetfDraft();
+    versions = {};
+    for (const ParsedQuicVersion& version : AllSupportedVersions()) {
+      if (version.HasIetfQuicFrames() &&
+          version.handshake_protocol == quic::PROTOCOL_TLS1_3) {
+        versions.push_back(version);
+      }
+    }
+  }
+
+  std::string quic_version_string =
+      quiche::GetQuicheCommandLineFlag(FLAGS_quic_version);
+  if (!quic_version_string.empty()) {
+    versions = quic::ParseQuicVersionVectorString(quic_version_string);
+  }
+
+  if (versions.empty()) {
+    std::cerr << "No known version selected." << std::endl;
+    return 1;
+  }
+
+  for (const quic::ParsedQuicVersion& version : versions) {
+    quic::QuicEnableVersion(version);
+  }
+
+  if (quiche::GetQuicheCommandLineFlag(FLAGS_force_version_negotiation)) {
+    versions.insert(versions.begin(),
+                    quic::QuicVersionReservedForNegotiation());
+  }
+
+  const int32_t num_requests(
+      quiche::GetQuicheCommandLineFlag(FLAGS_num_requests));
+  std::unique_ptr<quic::ProofVerifier> proof_verifier;
+  if (quiche::GetQuicheCommandLineFlag(
+          FLAGS_disable_certificate_verification)) {
+    proof_verifier = std::make_unique<FakeProofVerifier>();
+  } else {
+    proof_verifier = quic::CreateDefaultProofVerifier(url.host());
+  }
+  std::unique_ptr<quic::SessionCache> session_cache;
+  if (num_requests > 1 &&
+      quiche::GetQuicheCommandLineFlag(FLAGS_one_connection_per_request)) {
+    session_cache = std::make_unique<QuicClientSessionCache>();
+  }
+
+  QuicConfig config;
+  std::string connection_options_string =
+      quiche::GetQuicheCommandLineFlag(FLAGS_connection_options);
+  if (!connection_options_string.empty()) {
+    config.SetConnectionOptionsToSend(
+        ParseQuicTagVector(connection_options_string));
+  }
+  std::string client_connection_options_string =
+      quiche::GetQuicheCommandLineFlag(FLAGS_client_connection_options);
+  if (!client_connection_options_string.empty()) {
+    config.SetClientConnectionOptions(
+        ParseQuicTagVector(client_connection_options_string));
+  }
+  if (quiche::GetQuicheCommandLineFlag(FLAGS_multi_packet_chlo)) {
+    // Make the ClientHello span multiple packets by adding a custom transport
+    // parameter.
+    constexpr auto kCustomParameter =
+        static_cast<TransportParameters::TransportParameterId>(0x173E);
+    std::string custom_value(2000, '?');
+    config.custom_transport_parameters_to_send()[kCustomParameter] =
+        custom_value;
+  }
+  config.set_max_time_before_crypto_handshake(
+      QuicTime::Delta::FromMilliseconds(quiche::GetQuicheCommandLineFlag(
+          FLAGS_max_time_before_crypto_handshake_ms)));
+
+  int address_family_for_lookup = AF_UNSPEC;
+  if (quiche::GetQuicheCommandLineFlag(FLAGS_ip_version_for_host_lookup) ==
+      "4") {
+    address_family_for_lookup = AF_INET;
+  } else if (quiche::GetQuicheCommandLineFlag(
+                 FLAGS_ip_version_for_host_lookup) == "6") {
+    address_family_for_lookup = AF_INET6;
+  }
+
+  // Build the client, and try to connect.
+  std::unique_ptr<QuicSpdyClientBase> client = client_factory_->CreateClient(
+      url.host(), host, address_family_for_lookup, port, versions, config,
+      std::move(proof_verifier), std::move(session_cache));
+
+  if (client == nullptr) {
+    std::cerr << "Failed to create client." << std::endl;
+    return 1;
+  }
+
+  if (!quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert).empty() &&
+      !quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert_key)
+           .empty()) {
+    std::unique_ptr<ClientProofSource> proof_source =
+        CreateTestClientProofSource(
+            quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert),
+            quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert_key));
+    if (proof_source == nullptr) {
+      std::cerr << "Failed to create client proof source." << std::endl;
+      return 1;
+    }
+    client->crypto_config()->set_proof_source(std::move(proof_source));
+  }
+
+  int32_t initial_mtu = quiche::GetQuicheCommandLineFlag(FLAGS_initial_mtu);
+  client->set_initial_max_packet_length(
+      initial_mtu != 0 ? initial_mtu : quic::kDefaultMaxPacketSize);
+  client->set_drop_response_body(
+      quiche::GetQuicheCommandLineFlag(FLAGS_drop_response_body));
+  const std::string server_connection_id_hex_string =
+      quiche::GetQuicheCommandLineFlag(FLAGS_server_connection_id);
+  QUICHE_CHECK(server_connection_id_hex_string.size() % 2 == 0)
+      << "The length of --server_connection_id must be even. It is "
+      << server_connection_id_hex_string.size() << "-byte long.";
+  if (!server_connection_id_hex_string.empty()) {
+    const std::string server_connection_id_bytes =
+        absl::HexStringToBytes(server_connection_id_hex_string);
+    client->set_server_connection_id_override(QuicConnectionId(
+        server_connection_id_bytes.data(), server_connection_id_bytes.size()));
+  }
+  const int32_t server_connection_id_length =
+      quiche::GetQuicheCommandLineFlag(FLAGS_server_connection_id_length);
+  if (server_connection_id_length >= 0) {
+    client->set_server_connection_id_length(server_connection_id_length);
+  }
+  const int32_t client_connection_id_length =
+      quiche::GetQuicheCommandLineFlag(FLAGS_client_connection_id_length);
+  if (client_connection_id_length >= 0) {
+    client->set_client_connection_id_length(client_connection_id_length);
+  }
+  const size_t max_inbound_header_list_size =
+      quiche::GetQuicheCommandLineFlag(FLAGS_max_inbound_header_list_size);
+  if (max_inbound_header_list_size > 0) {
+    client->set_max_inbound_header_list_size(max_inbound_header_list_size);
+  }
+  const std::string interface_name =
+      quiche::GetQuicheCommandLineFlag(FLAGS_interface_name);
+  if (!interface_name.empty()) {
+    client->set_interface_name(interface_name);
+  }
+  const std::string signing_algorithms_pref =
+      quiche::GetQuicheCommandLineFlag(FLAGS_signing_algorithms_pref);
+  if (!signing_algorithms_pref.empty()) {
+    client->SetTlsSignatureAlgorithms(signing_algorithms_pref);
+  }
+  if (!client->Initialize()) {
+    std::cerr << "Failed to initialize client." << std::endl;
+    return 1;
+  }
+  if (!client->Connect()) {
+    quic::QuicErrorCode error = client->session()->error();
+    if (error == quic::QUIC_INVALID_VERSION) {
+      std::cerr << "Failed to negotiate version with " << host << ":" << port
+                << ". " << client->session()->error_details() << std::endl;
+      // 0: No error.
+      // 20: Failed to connect due to QUIC_INVALID_VERSION.
+      return quiche::GetQuicheCommandLineFlag(FLAGS_version_mismatch_ok) ? 0
+                                                                         : 20;
+    }
+    std::cerr << "Failed to connect to " << host << ":" << port << ". "
+              << quic::QuicErrorCodeToString(error) << " "
+              << client->session()->error_details() << std::endl;
+    return 1;
+  }
+
+  std::cout << "Connected to " << host << ":" << port;
+  if (quiche::GetQuicheCommandLineFlag(FLAGS_output_resolved_server_address)) {
+    std::cout << ", resolved IP " << client->server_address().host().ToString();
+  }
+  std::cout << std::endl;
+
+  auto stream = client->client_session()->CreateOutgoingBidirectionalStream();
+
+
+  spdy::Http2HeaderBlock headers;
+  headers[":scheme"] = url.scheme();
+  headers[":method"] = "CONNECT";
+  headers[":authority"] = url.HostPort();
+  headers[":path"] = url.PathParamsQuery();
+  headers[":protocol"] = "webtransport";
+  headers["sec-webtransport-http3-draft02"] = "1";
+  // headers["origin"] = origin_.Serialize();
+  stream->WriteHeaders(std::move(headers), /*fin=*/false, nullptr);
+
+  auto web_transport_session_ = stream->web_transport();
+  if (web_transport_session_ == nullptr) {
+    return 1;
+  }
+
+  // stream->web_transport()->SetVisitor(
+  //     std::make_unique<WebTransportVisitorProxy>(this));
 
   return 0;
 }

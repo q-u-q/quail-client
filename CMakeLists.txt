@@ -217,6 +217,12 @@ add_executable(quiche-node
   src/my_quic_toy_client.h
   src/my_quic_toy_client.cc
 
+  src/my_quic_client.h
+  src/my_quic_client.cc
+
+  src/my_quic_epoll_client_factory.h
+  src/my_quic_epoll_client_factory.cc
+
   main.cc)
 
 target_link_libraries(quiche-node 

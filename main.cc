@@ -49,20 +49,12 @@
 #include "quiche/common/platform/api/quiche_system_event_loop.h"
 
 #include "my_quic_toy_client.h"
+#include "my_quic_epoll_client_factory.h"
 
 int main(int argc, char* argv[]) {
   quiche::QuicheSystemEventLoop event_loop("quic_client");
-  const char* usage = "Usage: quic_client [options] <url>";
 
-  // All non-flag arguments should be interpreted as URLs to fetch.
-  std::vector<std::string> urls =
-      quiche::QuicheParseCommandLineFlags(usage, argc, argv);
-  if (urls.size() != 1) {
-    quiche::QuichePrintCommandLineFlagHelp(usage);
-    exit(0);
-  }
-
-  quic::QuicEpollClientFactory factory;
+  quic::MyQuicEpollClientFactory factory;
   quic::MyQuicToyClient client(&factory);
-  return client.SendRequestsAndPrintResponses(urls);
+  return client.SendRequestsAndPrintResponses();
 }

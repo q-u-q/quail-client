@@ -22,7 +22,7 @@ class MyQuicToyClient {
   // Connects to the QUIC server based on the various flags defined in the
   // .cc file, sends requests and prints the responses. Returns 0 on success
   // and non-zero otherwise.
-  int SendRequestsAndPrintResponses(std::vector<std::string> urls);
+  int SendRequestsAndPrintResponses();
 
   // Compatibility alias
   using ClientFactory = ClientFactoryInterface;

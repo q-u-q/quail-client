@@ -255,15 +255,14 @@ std::unique_ptr<ClientProofSource> CreateTestClientProofSource(
 MyQuicToyClient::MyQuicToyClient(ClientFactory* client_factory)
     : client_factory_(client_factory) {}
 
-int MyQuicToyClient::SendRequestsAndPrintResponses(
-    std::vector<std::string> urls) {
-      std::cout << "ne " <<urls[0] << std::endl;
-  QuicUrl url(urls[0], "https");
+int MyQuicToyClient::SendRequestsAndPrintResponses() {
+  std::string url_str = "localhost/echo";
+  QuicUrl url(url_str, "https");
   std::string host = quiche::GetQuicheCommandLineFlag(FLAGS_host);
   if (host.empty()) {
     host = url.host();
   }
-  int port = quiche::GetQuicheCommandLineFlag(FLAGS_port);
+  int port = 4433;
   if (port == 0) {
     port = url.port();
   }

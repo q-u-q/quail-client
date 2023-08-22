@@ -42,6 +42,7 @@
 
 #include "my_quic_toy_client.h"
 
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -52,6 +53,8 @@
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
+#include "quiche/common/platform/api/quiche_command_line_flags.h"
+#include "quiche/common/quiche_text_utils.h"
 #include "quiche/quic/core/crypto/quic_client_session_cache.h"
 #include "quiche/quic/core/quic_packets.h"
 #include "quiche/quic/core/quic_server_id.h"
@@ -59,17 +62,15 @@
 #include "quiche/quic/core/quic_versions.h"
 #include "quiche/quic/platform/api/quic_default_proof_providers.h"
 #include "quiche/quic/platform/api/quic_ip_address.h"
+#include "quiche/quic/platform/api/quic_logging.h"
 #include "quiche/quic/platform/api/quic_socket_address.h"
 #include "quiche/quic/tools/fake_proof_verifier.h"
 #include "quiche/quic/tools/quic_url.h"
-#include "quiche/common/platform/api/quiche_command_line_flags.h"
-#include "quiche/common/quiche_text_utils.h"
 #include "quiche/spdy/core/http2_header_block.h"
 
 #include "quiche/quic/core/http/web_transport_http3.h"
 
 #include "quiche/quic/tools/quic_name_lookup.h"
-
 
 namespace {
 
@@ -78,141 +79,202 @@ using quiche::QuicheTextUtils;
 }  // namespace
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    std::string, host, "",
+    std::string,
+    host,
+    "",
     "The IP or hostname to connect to. If not provided, the host "
     "will be derived from the provided URL.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(int32_t, port, 0, "The port to connect to.");
 
-DEFINE_QUICHE_COMMAND_LINE_FLAG(std::string, ip_version_for_host_lookup, "",
+DEFINE_QUICHE_COMMAND_LINE_FLAG(std::string,
+                                ip_version_for_host_lookup,
+                                "",
                                 "Only used if host address lookup is needed. "
                                 "4=ipv4; 6=ipv6; otherwise=don't care.");
 
-DEFINE_QUICHE_COMMAND_LINE_FLAG(std::string, body, "",
+DEFINE_QUICHE_COMMAND_LINE_FLAG(std::string,
+                                body,
+                                "",
                                 "If set, send a POST with this body.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    std::string, body_hex, "",
+    std::string,
+    body_hex,
+    "",
     "If set, contents are converted from hex to ascii, before "
     "sending as body of a POST. e.g. --body_hex=\"68656c6c6f\"");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    std::string, headers, "",
+    std::string,
+    headers,
+    "",
     "A semicolon separated list of key:value pairs to "
     "add to request headers.");
 
-DEFINE_QUICHE_COMMAND_LINE_FLAG(bool, quiet, false,
+DEFINE_QUICHE_COMMAND_LINE_FLAG(bool,
+                                quiet,
+                                false,
                                 "Set to true for a quieter output experience.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    bool, output_resolved_server_address, false,
+    bool,
+    output_resolved_server_address,
+    false,
     "Set to true to print the resolved IP of the server.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    std::string, quic_version, "",
+    std::string,
+    quic_version,
+    "",
     "QUIC version to speak, e.g. 21. If not set, then all available "
     "versions are offered in the handshake. Also supports wire versions "
     "such as Q043 or T099.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    std::string, connection_options, "",
+    std::string,
+    connection_options,
+    "",
     "Connection options as ASCII tags separated by commas, "
     "e.g. \"ABCD,EFGH\"");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    std::string, client_connection_options, "",
+    std::string,
+    client_connection_options,
+    "",
     "Client connection options as ASCII tags separated by commas, "
     "e.g. \"ABCD,EFGH\"");
 
-DEFINE_QUICHE_COMMAND_LINE_FLAG(bool, quic_ietf_draft, false,
+DEFINE_QUICHE_COMMAND_LINE_FLAG(bool,
+                                quic_ietf_draft,
+                                false,
                                 "Use the IETF draft version. This also enables "
                                 "required internal QUIC flags.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    bool, version_mismatch_ok, false,
+    bool,
+    version_mismatch_ok,
+    false,
     "If true, a version mismatch in the handshake is not considered a "
     "failure. Useful for probing a server to determine if it speaks "
     "any version of QUIC.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    bool, force_version_negotiation, false,
+    bool,
+    force_version_negotiation,
+    false,
     "If true, start by proposing a version that is reserved for version "
     "negotiation.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    bool, multi_packet_chlo, false,
+    bool,
+    multi_packet_chlo,
+    false,
     "If true, add a transport parameter to make the ClientHello span two "
     "packets. Only works with QUIC+TLS.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    bool, redirect_is_success, true,
+    bool,
+    redirect_is_success,
+    true,
     "If true, an HTTP response code of 3xx is considered to be a "
     "successful response, otherwise a failure.");
 
-DEFINE_QUICHE_COMMAND_LINE_FLAG(int32_t, initial_mtu, 0,
+DEFINE_QUICHE_COMMAND_LINE_FLAG(int32_t,
+                                initial_mtu,
+                                0,
                                 "Initial MTU of the connection.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    int32_t, num_requests, 1,
+    int32_t,
+    num_requests,
+    1,
     "How many sequential requests to make on a single connection.");
 
-DEFINE_QUICHE_COMMAND_LINE_FLAG(bool, ignore_errors, false,
+DEFINE_QUICHE_COMMAND_LINE_FLAG(bool,
+                                ignore_errors,
+                                false,
                                 "If true, ignore connection/response errors "
                                 "and send all num_requests anyway.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    bool, disable_certificate_verification, true,
+    bool,
+    disable_certificate_verification,
+    true,
     "If true, don't verify the server certificate.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    std::string, default_client_cert, "/root/quic-client/certificates/certificate.pem",
+    std::string,
+    default_client_cert,
+    "/root/quic-client/certificates/certificate.pem",
     "The path to the file containing PEM-encoded client default certificate to "
     "be sent to the server, if server requested client certs.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    std::string, default_client_cert_key, "/root/quic-client/certificates/certificate.key",
+    std::string,
+    default_client_cert_key,
+    "/root/quic-client/certificates/certificate.key",
     "The path to the file containing PEM-encoded private key of the client's "
     "default certificate for signing, if server requested client certs.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    bool, drop_response_body, false,
+    bool,
+    drop_response_body,
+    false,
     "If true, drop response body immediately after it is received.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    bool, disable_port_changes, false,
+    bool,
+    disable_port_changes,
+    false,
     "If true, do not change local port after each request.");
 
-DEFINE_QUICHE_COMMAND_LINE_FLAG(bool, one_connection_per_request, false,
+DEFINE_QUICHE_COMMAND_LINE_FLAG(bool,
+                                one_connection_per_request,
+                                false,
                                 "If true, close the connection after each "
                                 "request. This allows testing 0-RTT.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    std::string, server_connection_id, "",
+    std::string,
+    server_connection_id,
+    "",
     "If non-empty, the client will use the given server connection id for all "
     "connections. The flag value is the hex-string of the on-wire connection id"
     " bytes, e.g. '--server_connection_id=0123456789abcdef'.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    int32_t, server_connection_id_length, -1,
+    int32_t,
+    server_connection_id_length,
+    -1,
     "Length of the server connection ID used. This flag has no effects if "
     "--server_connection_id is non-empty.");
 
-DEFINE_QUICHE_COMMAND_LINE_FLAG(int32_t, client_connection_id_length, -1,
+DEFINE_QUICHE_COMMAND_LINE_FLAG(int32_t,
+                                client_connection_id_length,
+                                -1,
                                 "Length of the client connection ID used.");
 
-DEFINE_QUICHE_COMMAND_LINE_FLAG(int32_t, max_time_before_crypto_handshake_ms,
+DEFINE_QUICHE_COMMAND_LINE_FLAG(int32_t,
+                                max_time_before_crypto_handshake_ms,
                                 10000,
                                 "Max time to wait before handshake completes.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    int32_t, max_inbound_header_list_size, 128 * 1024,
+    int32_t,
+    max_inbound_header_list_size,
+    128 * 1024,
     "Max inbound header list size. 0 means default.");
 
-DEFINE_QUICHE_COMMAND_LINE_FLAG(std::string, interface_name, "",
+DEFINE_QUICHE_COMMAND_LINE_FLAG(std::string,
+                                interface_name,
+                                "",
                                 "Interface name to bind QUIC UDP sockets to.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    std::string, signing_algorithms_pref, "",
+    std::string,
+    signing_algorithms_pref,
+    "",
     "A textual specification of a set of signature algorithms that can be "
     "accepted by boring SSL SSL_set1_sigalgs_list()");
 
@@ -585,36 +647,32 @@ int MyQuicToyClient::SendRequestsAndPrintResponses() {
 
 class WebTransportVisitorProxy : public quic::WebTransportVisitor {
  public:
-  explicit WebTransportVisitorProxy(quic::WebTransportVisitor* visitor)
-      : visitor_(visitor) {}
+  explicit WebTransportVisitorProxy() {}
 
-  void OnSessionReady() override { visitor_->OnSessionReady(); }
+  void OnSessionReady() override { QUIC_LOG(WARNING) << "OnSessionReady"; }
   void OnSessionClosed(quic::WebTransportSessionError error_code,
                        const std::string& error_message) override {
-    visitor_->OnSessionClosed(error_code, error_message);
+    QUIC_LOG(WARNING) << "OnSessionClosed";
   }
   void OnIncomingBidirectionalStreamAvailable() override {
-    visitor_->OnIncomingBidirectionalStreamAvailable();
+    QUIC_LOG(WARNING) << "OnIncomingBidirectionalStreamAvailable";
   }
   void OnIncomingUnidirectionalStreamAvailable() override {
-    visitor_->OnIncomingUnidirectionalStreamAvailable();
+    QUIC_LOG(WARNING) << "OnIncomingUnidirectionalStreamAvailable";
   }
   void OnDatagramReceived(absl::string_view datagram) override {
-    visitor_->OnDatagramReceived(datagram);
+    QUIC_LOG(WARNING) << "OnDatagramReceived";
+    fflush(stdout);
   }
   void OnCanCreateNewOutgoingBidirectionalStream() override {
-    visitor_->OnCanCreateNewOutgoingBidirectionalStream();
+    QUIC_LOG(WARNING) << "OnCanCreateNewOutgoingBidirectionalStream";
   }
   void OnCanCreateNewOutgoingUnidirectionalStream() override {
-    visitor_->OnCanCreateNewOutgoingUnidirectionalStream();
+    QUIC_LOG(WARNING) << "OnCanCreateNewOutgoingUnidirectionalStream";
   }
-
- private:
-  raw_ptr<quic::WebTransportVisitor> visitor_;
 };
 
-
-int MyQuicToyClient::SendWebtransport(){
+int MyQuicToyClient::SendWebtransport() {
   std::string url_str = "localhost/echo";
   QuicUrl url(url_str, "https");
   std::string host = quiche::GetQuicheCommandLineFlag(FLAGS_host);
@@ -714,6 +772,8 @@ int MyQuicToyClient::SendWebtransport(){
       url.host(), host, address_family_for_lookup, port, versions, config,
       std::move(proof_verifier), std::move(session_cache));
 
+  client->set_enable_web_transport(true);
+
   if (client == nullptr) {
     std::cerr << "Failed to create client." << std::endl;
     return 1;
@@ -800,8 +860,8 @@ int MyQuicToyClient::SendWebtransport(){
   }
   std::cout << std::endl;
 
-  auto stream = client->client_session()->CreateOutgoingBidirectionalStream();
-
+  auto stream =  client->CreateClientStream();
+  stream->set_visitor(this);
 
   spdy::Http2HeaderBlock headers;
   headers[":scheme"] = url.scheme();
@@ -810,18 +870,34 @@ int MyQuicToyClient::SendWebtransport(){
   headers[":path"] = url.PathParamsQuery();
   headers[":protocol"] = "webtransport";
   headers["sec-webtransport-http3-draft02"] = "1";
+
   // headers["origin"] = origin_.Serialize();
-  stream->WriteHeaders(std::move(headers), /*fin=*/false, nullptr);
+  // stream->WriteHeaders(std::move(headers), /*fin=*/false, nullptr);
+  stream->SendRequest(std::move(headers), "", false);
 
   auto web_transport_session_ = stream->web_transport();
+  QUIC_LOG(WARNING) << "SHit";
+
   if (web_transport_session_ == nullptr) {
     return 1;
   }
 
-  // stream->web_transport()->SetVisitor(
-  //     std::make_unique<WebTransportVisitorProxy>(this));
+  QUIC_LOG(WARNING) << "SHit2";
+  
+  stream->web_transport()->SetVisitor(
+      std::make_unique<WebTransportVisitorProxy>());
+
+  stream->web_transport()->SendOrQueueDatagram("fuck");
+
+  while (true) {
+    client->WaitForEvents();
+  }
 
   return 0;
+}
+
+void MyQuicToyClient::OnClose(QuicSpdyStream* stream) {
+  QUIC_LOG(WARNING) << "OnClose";
 }
 
 }  // namespace quic

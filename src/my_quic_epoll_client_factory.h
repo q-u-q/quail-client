@@ -19,6 +19,8 @@ class MyQuicEpollClientFactory : public ClientFactoryInterface {
       std::unique_ptr<ProofVerifier> verifier,
       std::unique_ptr<SessionCache> session_cache) override;
 
+  void HandleEventsForever();
+
  private:
   std::unique_ptr<QuicEventLoop> event_loop_;
 };

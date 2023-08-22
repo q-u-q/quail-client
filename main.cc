@@ -53,13 +53,11 @@
 #include "my_quic_epoll_client_factory.h"
 
 int main(int argc, char* argv[]) {
-  quiche::QuicheSystemEventLoop event_loop("quic_client");
-
   quic::MyQuicEpollClientFactory factory;
   quic::MyQuicToyClient client(&factory);
   // return client.SendRequestsAndPrintResponses();
   client.SendWebtransport();
-
-  sleep(10000);
+  
+  // factory.HandleEventsForever();
   return 0;
 }

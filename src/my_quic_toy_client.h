@@ -13,7 +13,7 @@
 
 namespace quic {
 
-class MyQuicToyClient {
+class MyQuicToyClient : public QuicSpdyStream::Visitor{
  public:
   // Constructs a new toy client that will use |client_factory| to create the
   // actual QuicSpdyClientBase instance.
@@ -25,6 +25,8 @@ class MyQuicToyClient {
   int SendRequestsAndPrintResponses();
 
   int SendWebtransport();
+
+  void OnClose(QuicSpdyStream* stream) override;
 
  private:
   MyQuicEpollClientFactory* client_factory_;  // Unowned.

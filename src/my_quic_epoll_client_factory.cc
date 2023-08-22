@@ -37,4 +37,10 @@ std::unique_ptr<QuicSpdyClientBase> MyQuicEpollClientFactory::CreateClient(
       std::move(session_cache));
 }
 
+void MyQuicEpollClientFactory::HandleEventsForever() {
+  while (true) {
+    event_loop_->RunEventLoopOnce(QuicTime::Delta::FromMilliseconds(50));
+  }
+}
+
 }  // namespace quic

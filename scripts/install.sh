@@ -98,7 +98,7 @@ install_uv(){
 
 install_deps(){
   $SUDO apt-get update -y
-  $SUDO apt-get install build-essential cmake golang-go zlib1g-dev -y
+  $SUDO apt-get install build-essential cmake golang-go -y
 }
 
 install_absl(){
@@ -133,6 +133,25 @@ install_protobuf(){
       popd
     else
         echo "protobuf already installed." && return 0
+    fi 
+}
+
+install_zlib(){
+  echo "- install_zlib."
+
+  if [ ! -d $THIRD_PARTY_PATH/zlib ] ; then
+      pushd $THIRD_PARTY_PATH
+      git clone https://github.com/q-u-q/zlib.git
+      pushd zlib
+      git checkout 21767c654d31d2dccdde4330529775c6c5fd5389 # # Last updated 2022-05-18
+
+      cmake . --install-prefix=$INSTALL_PATH -Bbuild
+      cmake --build build -- -j 8
+      cmake --install build
+      popd
+      popd
+    else
+        echo "zlib already installed." && return 0
     fi 
 }
 
@@ -225,6 +244,7 @@ fi
 install_deps
 install_absl
 install_protobuf
+install_zlib
 install_boringssl
 install_googleurl
 install_quic_trace

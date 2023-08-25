@@ -10,6 +10,7 @@ set(CMAKE_PREFIX_PATH ${DEPS_PATH})
 set(QUICHE_PATH third_party/quiche/)
 
 add_subdirectory(third_party/googleurl)
+add_subdirectory(third_party/zlib EXCLUDE_FROM_ALL)
 
 find_package(Threads REQUIRED)
 find_package(OpenSSL CONFIG REQUIRED)
@@ -200,7 +201,8 @@ target_link_libraries(quiche_core PUBLIC
   quic_trace_proto_lib
   
   OpenSSL::Crypto OpenSSL::SSL
-
+  
+  zlib
 )
 
 

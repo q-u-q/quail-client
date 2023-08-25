@@ -145,9 +145,6 @@ install_zlib(){
       pushd zlib
       git checkout 21767c654d31d2dccdde4330529775c6c5fd5389 # # Last updated 2022-05-18
 
-      cmake . --install-prefix=$INSTALL_PATH -Bbuild
-      cmake --build build -- -j 8
-      cmake --install build
       popd
       popd
     else

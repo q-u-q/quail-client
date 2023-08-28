@@ -143,7 +143,7 @@ install_zlib(){
       pushd $THIRD_PARTY_PATH
       git clone https://github.com/q-u-q/zlib.git
       pushd zlib
-      git checkout 21767c654d31d2dccdde4330529775c6c5fd5389 # # Last updated 2022-05-18
+      git checkout 09155eaa2f9270dc4ed1fa13e2b4b2613e6e4851 # # Last updated 2022-05-18
 
       popd
       popd
@@ -161,9 +161,6 @@ install_boringssl(){
       pushd boringssl
       git checkout dd5219451c3ce26221762a15d867edf43b463bb2 # 2023-5-17
 
-      cmake . --install-prefix=$INSTALL_PATH -Bbuild
-      cmake --build build -- -j 8
-      cmake --install build
       popd
       popd
     else

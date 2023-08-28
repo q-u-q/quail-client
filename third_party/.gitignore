@@ -6,3 +6,4 @@
 /libuv
 /boringssl
 /abseil-cpp
+/zlib

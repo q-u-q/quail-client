@@ -4,20 +4,30 @@ project(quiche-node VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(DEPS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/deps)
-set(CMAKE_PREFIX_PATH ${DEPS_PATH})
+set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_CROSSCOMPILING ON)
+
 
 set(QUICHE_PATH third_party/quiche/)
+set(protobuf_ABSL_PROVIDER "package" CACHE STRING "" FORCE)
+set(protobuf_INSTALL OFF CACHE BOOL "" FORCE)
+set(protobuf_BUILD_TESTS OFF)
+set(ABSL_PROPAGATE_CXX_STD ON)
 
 add_subdirectory(third_party/googleurl)
 add_subdirectory(third_party/zlib EXCLUDE_FROM_ALL)
+add_subdirectory(third_party/boringssl EXCLUDE_FROM_ALL)
+add_subdirectory(third_party/abseil-cpp EXCLUDE_FROM_ALL)
+add_subdirectory(third_party/protobuf EXCLUDE_FROM_ALL)
+
+include(cmake/protobuf-generate.cmake)
 
 find_package(Threads REQUIRED)
-find_package(OpenSSL CONFIG REQUIRED)
-find_package(protobuf CONFIG REQUIRED)
+# find_package(OpenSSL CONFIG REQUIRED)
+# find_package(protobuf CONFIG REQUIRED)
 
 # proto
-set(protobuf_PROTOC_EXE ${DEPS_PATH}/bin/protoc)
+# set(protobuf_PROTOC_EXE ${DEPS_PATH}/bin/protoc)
 set(PROTO_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
 file(MAKE_DIRECTORY ${PROTO_BINARY_DIR})
 
@@ -131,6 +141,9 @@ include_directories(
   src
   default
   .
+  third_party/boringssl/include
+  third_party/zlib
+  ${CMAKE_CURRENT_BINARY_DIR}/third_party/zlib
 )
 
 
@@ -181,7 +194,7 @@ target_link_libraries(io_tool_support PUBLIC
   quiche_tool_support
   quiche_platform_default_tools
 
-  OpenSSL::Crypto
+  crypto
   googleurl
   absl::strings
 )
@@ -200,8 +213,8 @@ target_link_libraries(quiche_core PUBLIC
   source_address_token_proto_lib
   quic_trace_proto_lib
   
-  OpenSSL::Crypto OpenSSL::SSL
-  
+  crypto ssl
+
   zlib
 )
 

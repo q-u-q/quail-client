@@ -18,7 +18,9 @@ add_subdirectory(third_party/googleurl)
 add_subdirectory(third_party/zlib EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/boringssl EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/abseil-cpp EXCLUDE_FROM_ALL)
-add_subdirectory(third_party/protobuf EXCLUDE_FROM_ALL)
+add_subdirectory(third_party/protobuf EXCLUDE_FROM_ALL) # TOOD: zlib
+
+find_program(PROTOC_BINARY_PATH protoc PATHS deps/bin)
 
 include(cmake/protobuf-generate.cmake)
 
@@ -27,7 +29,7 @@ find_package(Threads REQUIRED)
 # find_package(protobuf CONFIG REQUIRED)
 
 # proto
-# set(protobuf_PROTOC_EXE ${DEPS_PATH}/bin/protoc)
+set(protobuf_PROTOC_EXE ${PROTOC_BINARY_PATH})
 set(PROTO_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
 file(MAKE_DIRECTORY ${PROTO_BINARY_DIR})
 
@@ -248,6 +250,7 @@ target_link_libraries(quiche-node
   quiche_platform_default_tools
   quiche_tool_support
   absl::flags_parse
-  googleurl)
+  googleurl
+  )
 
 

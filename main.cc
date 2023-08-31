@@ -45,10 +45,6 @@
 #include <memory>
 #include <string>
 
-#include "quiche/quic/tools/quic_epoll_client_factory.h"
-#include "quiche/common/platform/api/quiche_command_line_flags.h"
-#include "quiche/common/platform/api/quiche_system_event_loop.h"
-
 #include "my_quic_toy_client.h"
 #include "my_quic_epoll_client_factory.h"
 

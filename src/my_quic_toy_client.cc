@@ -203,19 +203,19 @@ DEFINE_QUICHE_COMMAND_LINE_FLAG(
     true,
     "If true, don't verify the server certificate.");
 
-DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    std::string,
-    default_client_cert,
-    "/root/quic-client/certificates/certificate.pem",
-    "The path to the file containing PEM-encoded client default certificate to "
-    "be sent to the server, if server requested client certs.");
+// DEFINE_QUICHE_COMMAND_LINE_FLAG(
+//     std::string,
+//     default_client_cert,
+//     "/root/quic-client/certificates/certificate.pem",
+//     "The path to the file containing PEM-encoded client default certificate to "
+//     "be sent to the server, if server requested client certs.");
 
-DEFINE_QUICHE_COMMAND_LINE_FLAG(
-    std::string,
-    default_client_cert_key,
-    "/root/quic-client/certificates/certificate.key",
-    "The path to the file containing PEM-encoded private key of the client's "
-    "default certificate for signing, if server requested client certs.");
+// DEFINE_QUICHE_COMMAND_LINE_FLAG(
+//     std::string,
+//     default_client_cert_key,
+//     "/root/quic-client/certificates/certificate.key",
+//     "The path to the file containing PEM-encoded private key of the client's "
+//     "default certificate for signing, if server requested client certs.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
     bool,
@@ -424,19 +424,19 @@ int MyQuicToyClient::SendRequestsAndPrintResponses() {
     return 1;
   }
 
-  if (!quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert).empty() &&
-      !quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert_key)
-           .empty()) {
-    std::unique_ptr<ClientProofSource> proof_source =
-        CreateTestClientProofSource(
-            quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert),
-            quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert_key));
-    if (proof_source == nullptr) {
-      std::cerr << "Failed to create client proof source." << std::endl;
-      return 1;
-    }
-    client->crypto_config()->set_proof_source(std::move(proof_source));
-  }
+  // if (!quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert).empty() &&
+  //     !quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert_key)
+  //          .empty()) {
+  //   std::unique_ptr<ClientProofSource> proof_source =
+  //       CreateTestClientProofSource(
+  //           quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert),
+  //           quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert_key));
+  //   if (proof_source == nullptr) {
+  //     std::cerr << "Failed to create client proof source." << std::endl;
+  //     return 1;
+  //   }
+  //   client->crypto_config()->set_proof_source(std::move(proof_source));
+  // }
 
   int32_t initial_mtu = quiche::GetQuicheCommandLineFlag(FLAGS_initial_mtu);
   client->set_initial_max_packet_length(
@@ -779,19 +779,19 @@ int MyQuicToyClient::SendWebtransport() {
     return 1;
   }
 
-  if (!quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert).empty() &&
-      !quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert_key)
-           .empty()) {
-    std::unique_ptr<ClientProofSource> proof_source =
-        CreateTestClientProofSource(
-            quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert),
-            quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert_key));
-    if (proof_source == nullptr) {
-      std::cerr << "Failed to create client proof source." << std::endl;
-      return 1;
-    }
-    client->crypto_config()->set_proof_source(std::move(proof_source));
-  }
+  // if (!quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert).empty() &&
+  //     !quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert_key)
+  //          .empty()) {
+  //   std::unique_ptr<ClientProofSource> proof_source =
+  //       CreateTestClientProofSource(
+  //           quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert),
+  //           quiche::GetQuicheCommandLineFlag(FLAGS_default_client_cert_key));
+  //   if (proof_source == nullptr) {
+  //     std::cerr << "Failed to create client proof source." << std::endl;
+  //     return 1;
+  //   }
+  //   client->crypto_config()->set_proof_source(std::move(proof_source));
+  // }
 
   int32_t initial_mtu = quiche::GetQuicheCommandLineFlag(FLAGS_initial_mtu);
   client->set_initial_max_packet_length(

@@ -672,8 +672,9 @@ class WebTransportVisitorProxy : public quic::WebTransportVisitor {
   }
 };
 
-int MyQuicToyClient::SendWebtransport() {
-  std::string url_str = "localhost/echo";
+int MyQuicToyClient::SendWebtransport(std::string url_str) {
+  // std::string url_str = "localhost/echo";
+  
   QuicUrl url(url_str, "https");
   std::string host = quiche::GetQuicheCommandLineFlag(FLAGS_host);
   if (host.empty()) {

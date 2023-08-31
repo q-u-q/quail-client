@@ -24,7 +24,7 @@ class MyQuicToyClient : public QuicSpdyStream::Visitor{
   // and non-zero otherwise.
   int SendRequestsAndPrintResponses();
 
-  int SendWebtransport();
+  int SendWebtransport(std::string url_str);
 
   void OnClose(QuicSpdyStream* stream) override;
 

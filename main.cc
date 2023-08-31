@@ -45,15 +45,11 @@
 #include <memory>
 #include <string>
 
-#include "my_quic_toy_client.h"
-#include "my_quic_epoll_client_factory.h"
+#include "quail.h"
 
 int main(int argc, char* argv[]) {
-  quic::MyQuicEpollClientFactory factory;
-  quic::MyQuicToyClient client(&factory);
-  // return client.SendRequestsAndPrintResponses();
-  client.SendWebtransport();
-  
-  // factory.HandleEventsForever();
+  std::string url = "192.168.97.138/echo";
+  quail::QuailClient q(url);
+  q.Start();
   return 0;
 }

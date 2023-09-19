@@ -221,6 +221,8 @@ target_link_libraries(quiche_core PUBLIC
 )
 
 add_executable(quiche-node 
+  src/quic_client_network_helper.h
+  src/quic_client_network_helper.cc
   main.cc)
 
 target_link_libraries(quiche-node 

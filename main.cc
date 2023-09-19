@@ -18,6 +18,7 @@
 #include "quiche/quic/tools/quic_name_lookup.h"
 #include "quiche/quic/tools/quic_spdy_client_base.h"
 
+#include "quic_client_network_helper.h"
 
 using namespace quic;
 
@@ -48,62 +49,39 @@ int main(int argc, char* argv[]) {
   // event loop
   auto event_loop_ = GetDefaultEventLoop()->Create(QuicDefaultClock::Get());
 
-  int client_connection_id_length_ = 0;
-  QuicConnectionId client_connection_id =
-      QuicUtils::CreateRandomConnectionId(client_connection_id_length_);
-  QuicConnectionId server_connection_id =
-      QuicUtils::CreateRandomConnectionId(kQuicDefaultConnectionIdLength);
+  QuicConfig config;
+  std::unique_ptr<quic::SessionCache> session_cache;
 
-  auto helper = new QuicDefaultConnectionHelper();
-  auto alarm_factory = event_loop_->CreateAlarmFactory().release();
+  auto helper = std::make_unique<QuicClientNetworkHelper>(event_loop_.get());
+  auto helper_ptr = helper.get();
+  auto client = std::make_unique<QuicSpdyClientBase>(
+      server_id, versions, config, new QuicDefaultConnectionHelper(),
+      event_loop_->CreateAlarmFactory().release(), std::move(helper),
+      std::move(proof_verifier), std::move(session_cache));
+  
+  helper_ptr->SetClient(client.get());
 
-  // fd
-  QuicUdpSocketApi api;
-  SocketFd fd = api.Create(addr.host().AddressFamilyToInt(),
-                           /*receive_buffer_size =*/kDefaultSocketReceiveBuffer,
-                           /*send_buffer_size =*/kDefaultSocketReceiveBuffer);
-  if (fd == kInvalidSocketFd) {
-    return fd;
+  client->set_server_address(addr);
+
+ //
+
+  if (!client->Initialize()) {
+    std::cerr << "Failed to initialize client." << std::endl;
+    return 1;
+  }
+  if (!client->Connect()) {
+    quic::QuicErrorCode error = client->session()->error();
+    if (error == quic::QUIC_INVALID_VERSION) {
+      std::cerr << "Failed to negotiate version with " << host_for_handshake << ":" << port
+                << ". " << client->session()->error_details() << std::endl;
+
+    }
+    std::cerr << "Failed to connect to " << host_for_handshake << ":" << port << ". "
+              << quic::QuicErrorCodeToString(error) << " "
+              << client->session()->error_details() << std::endl;
+
   }
 
-  api.EnableDroppedPacketCount(fd);
-  api.EnableReceiveTimestamp(fd);
-
-  // QuicClientDefaultNetworkHelper::CreateUDPSocketAndBind(
-  //  register fd
-
-  // writer
-
-  auto writer = new QuicLevelTriggeredPacketWriter(fd, event_loop_.get());
-
-  DeterministicConnectionIdGenerator connection_id_generator_{
-      kQuicDefaultConnectionIdLength};
-  // connection
-
-  auto connection =
-      new QuicConnection(server_connection_id, QuicSocketAddress(), addr,
-                         helper, alarm_factory, writer,
-                         /* owns_writer= */ false, Perspective::IS_CLIENT,
-                         versions, connection_id_generator_);
-
-  connection->set_client_connection_id(client_connection_id);
-
-  QuicConfig config_;
-  std::unique_ptr<quic::SessionCache> session_cache;
-  QuicCryptoClientConfig crypto_config_(std::move(proof_verifier), std::move(session_cache));
-  QuicClientPushPromiseIndex push_promise_index_;
-
-  auto session = std::make_unique<QuicSpdyClientSession>(
-      config_, ParsedQuicVersionVector{versions},
-      connection,  // session_ takes ownership of connection_ here.
-      server_id, &crypto_config_, &push_promise_index_);
-  session->Initialize();
-  session->CryptoConnect();
-
-  // create session
-  // std::make_unique<QuicSpdyClientSession>(
-  //     *config(), supported_versions, connection, server_id(),
-  //     crypto_config(), &push_promise_index_);
 
   while (true) {
     event_loop_->RunEventLoopOnce(QuicTime::Delta::FromMilliseconds(50));

@@ -1,18 +1,21 @@
 
 # quic-node
 
-## quiche 
+1. eventloop
+2. 
 
-3e9e5883670705703a3e5e3d083f1b0640c8aafc # 2023-8-7
 
-## 
+###
 
-/root/quic-client/build/quiche-node localhost/echo --port 4433
+QuicClientBase::QuicClientBase
+
+QuicClientBase::StartConnect
+
+QuicClientBase::WaitForEvents
 
 
 ##
-TARGETS="arm64-v8a armeabi-v7a x86_64 x86"
 
+/root/quiche/quiche/quic/tools/quic_spdy_client_base.h
 
-cmake . -Bbuild -DCMAKE_TOOLCHAIN_FILE=/root/android-ndk-r25c/build/cmake/android.toolchain.cmake -DANDROID_PLATFORM=android-19 -DANDROID_ABI=arm64-v8a
-cmake --build build -- -j 16
+104 CreateQuicClientSession

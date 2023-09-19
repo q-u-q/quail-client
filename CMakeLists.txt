@@ -220,22 +220,10 @@ target_link_libraries(quiche_core PUBLIC
   zlib
 )
 
-#
-add_library(quail 
-  src/my_quic_toy_client.h
-  src/my_quic_toy_client.cc
+add_executable(quiche-node 
+  main.cc)
 
-  src/my_quic_client.h
-  src/my_quic_client.cc
-
-  src/my_quic_epoll_client_factory.h
-  src/my_quic_epoll_client_factory.cc
-
-  src/quail.h
-  src/quail.cc
-)
-
-target_link_libraries(quail
+target_link_libraries(quiche-node 
   PUBLIC
   io_tool_support # ok
   quiche_core
@@ -244,25 +232,6 @@ target_link_libraries(quail
   quiche_tool_support
   absl::flags_parse
   googleurl
-)
-
-
-
-add_executable(quiche-node 
-  # src/web_transport_client.h
-  # src/web_transport_client.cc
-
-  # src/web_transport_error.h
-  # src/web_transport_error.cc
-
-  # src/web_transport_http3_client.h
-  # src/web_transport_http3_client.cc
-
-  main.cc)
-
-target_link_libraries(quiche-node 
-  PUBLIC
-  quail
   )
 
 

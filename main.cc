@@ -24,10 +24,16 @@ using namespace quic;
 
 int main(int argc, char* argv[]) {
   // version
-  quic::ParsedQuicVersionVector versions = quic::CurrentSupportedVersions();
-  for (const quic::ParsedQuicVersion& version : versions) {
-    quic::QuicEnableVersion(version);
-  }
+
+  // quic::ParsedQuicVersionVector versions = AllSupportedVersions();
+  // for (const quic::ParsedQuicVersion& version : versions) {
+  //   quic::QuicEnableVersion(version);
+  // }
+
+  quic::ParsedQuicVersionVector versions = {ParsedQuicVersion::Q046()};
+  
+  QUIC_DLOG(INFO) << "QuicVersion version: "
+                  << ParsedQuicVersionVectorToString(versions);
 
   // verifier
   std::unique_ptr<quic::ProofVerifier> proof_verifier =
@@ -35,9 +41,9 @@ int main(int argc, char* argv[]) {
 
   //
   int address_family_for_lookup = AF_INET;  // ipv6 : AF_INET6
-  std::string host_for_lookup = "192.168.97.138";
-  std::string host_for_handshake = "192.168.97.138";
-  uint16_t port = 4433;
+  std::string host_for_lookup = "116.130.230.47";
+  std::string host_for_handshake = host_for_lookup;
+  uint16_t port = 443;
 
   QuicSocketAddress addr = tools::LookupAddress(
       address_family_for_lookup, host_for_lookup, absl::StrCat(port));
@@ -82,6 +88,9 @@ int main(int argc, char* argv[]) {
 
   }
 
+  std::cout << "Connected!\n";
+  
+  auto stream =  client->CreateClientStream();
 
   while (true) {
     event_loop_->RunEventLoopOnce(QuicTime::Delta::FromMilliseconds(50));
